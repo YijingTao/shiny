@@ -1,0 +1,120 @@
+---
+title: "Shiny Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+instead of `knit`, it become `run document`. `runtime: shiny` means actually there is a shiny runing in the background of this document.
+```{r setup, include=FALSE}
+library(flexdashboard)
+
+library(tidyverse)
+library(viridis)
+library(p8105.datasets)
+library(plotly)
+library(shiny)
+```
+
+```{r data_import}
+data("nyc_airbnb")
+
+nyc_airbnb = 
+  nyc_airbnb %>% 
+  mutate(stars = review_scores_location / 2) %>% 
+  select(
+    borough = neighbourhood_group, neighbourhood, stars, price, room_type, lat, long
+  ) %>% # what does it mean? borough become the first column?
+  drop_na(stars)
+```
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+borough_choices = 
+  nyc_airbnb %>% 
+  distinct(borough) %>% #pull out borough
+  pull()#pull different places in boroughs
+
+selectInput( #Create a select list that can be used to choose a single or multiple items from a list of values.
+  "borough_choice",#choose the place(borough)
+  label = h1("Select Borough"),#the header, 1 is largest, number + ->size of letter -
+  choices = borough_choices,
+  selected = "Manhattan")
+
+min_price = 
+  nyc_airbnb %>% 
+  distinct(price) %>% 
+  min()
+
+max_price = 
+  nyc_airbnb %>% 
+  distinct(price) %>% 
+  max()
+
+sliderInput(
+  "price_choice",
+  label = h2("Price range"),
+  min = min_price,
+  max = 1000,
+  value = c(100, 500)
+)
+
+room_choices = 
+  nyc_airbnb %>% 
+  distinct(room_type) %>% 
+  pull()
+
+radioButtons( #Create a set of radio buttons used to select an item from a list.small spot buttons.
+  "room_choice", 
+  label = h3("Room type"),
+  choices = room_choices,
+  selected = "Entire home/apt"
+)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+renderPlotly({
+  
+  nyc_airbnb %>% 
+    filter(
+      borough == input[["borough_choice"]], 
+      price > input[["price_choice"]][1], price < input[["price_choice"]][2],#input id, [1] -> 1st level, [2] -> 2nd level ????what is 1st level and what is 2nd level???
+      room_type == input[["room_choice"]]
+    ) %>% 
+    plot_ly(
+      x = ~lat, y = ~long, type = "scatter", mode = "markers",
+      color = ~price, alpha = .5)
+  
+})# shiny.rstudio.com
+#file-new file-shiny web app
+#look at the gallery (in p8105 website)
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+renderPrint({
+  input[["price_choice"]]
+})
+```
+
+### Chart C
+
+```{r}
+renderPrint({
+  input[["room_choice"]]
+})
+```
+
